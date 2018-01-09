@@ -3,6 +3,7 @@ An ncurses-based program to show output of some ROS tools.
 Dependencies
 ------------
 ncurses
+
 ROS
 
 Compile
@@ -21,7 +22,7 @@ Usage
     n    runs rosnode list continuously
     t    runs rostopic list continously
     s    runs rosservice list continously
-    i    ros<X> info (where X = node, topic or service depending on if you're in rosnode, rostopic or rosservice list mode):
+    i    ros<X> info (where X = node, topic or service depending on if you're in rosnode, rostopic or rosservice list mode)
     j    scroll down, for example to select a certain node, topic or service
     k    scroll up
     q    quit
