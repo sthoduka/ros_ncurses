@@ -9,6 +9,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string.h>
+#include <ctype.h>
 
 
 NcursesNode::NcursesNode() :
@@ -25,6 +26,7 @@ NcursesNode::~NcursesNode()
     delwin(command_window_);
     delwin(main_window_);
     delwin(status_window_);
+    delwin(input_window_);
     endwin();
 }
 
@@ -33,16 +35,20 @@ void NcursesNode::initNcurses()
     initscr();
     cbreak();
     raw();
-    keypad(stdscr, TRUE);
+    keypad(stdscr, FALSE);
     noecho();
     curs_set(0);
     timeout(0);
     refresh();
     getmaxyx(stdscr, screen_rows_, screen_cols_);
 
-    command_window_ = newwin(1, screen_cols_, 0, 0);
+    command_window_ = newwin(1, screen_cols_ - 10, 0, 0);
     wrefresh(command_window_);
     wattron(command_window_, A_DIM);
+
+    input_window_ = newwin(1, 10, 0, screen_cols_ - 10);
+    wrefresh(input_window_);
+    wattron(input_window_, A_STANDOUT);
 
     main_window_ = newwin(screen_rows_ - 2, screen_cols_, 1, 0);
     wrefresh(main_window_);
@@ -80,15 +86,30 @@ void NcursesNode::writeStatus(const std::string &status)
     wrefresh(status_window_);
 }
 
+void NcursesNode::writeInput(const std::string &input)
+{
+    werase(input_window_);
+    mvwprintw(input_window_, 0, 0, input.c_str());
+    wrefresh(input_window_);
+}
+
 void NcursesNode::writeOutput()
 {
     werase(main_window_);
     wmove(main_window_, 0, 0);
     while (fgets(buffer_, BUFFER_SIZE, command_pipe_.get()) != nullptr)
     {
+        if (!filter_.empty())
+        {
+            // filter to be searched for not found
+            if (std::string(buffer_).find(filter_) == std::string::npos)
+            {
+                continue;
+            }
+        }
         wprintw(main_window_, buffer_);
-        wrefresh(main_window_);
     }
+    wrefresh(main_window_);
 }
 
 void NcursesNode::updateOutput()
@@ -133,6 +154,13 @@ void NcursesNode::highlightPreviousRow()
     continuous_refresh_ = false;
 }
 
+void NcursesNode::highlightRow(int row)
+{
+    mvwchgat(main_window_, row, 0, -1, A_REVERSE, 1, NULL);
+    wrefresh(main_window_);
+    continuous_refresh_ = false;
+}
+
 void NcursesNode::parseInput(char input, std::string &command)
 {
     if (input == ERR)
@@ -144,12 +172,60 @@ void NcursesNode::parseInput(char input, std::string &command)
         }
         return;
     }
-    if(input == 'n')
+    if (mode_ == SEARCH)
+    {
+        if ((int)input == 27 || input == KEY_EXIT)
+        {
+            command = filtered_command_;
+            filtered_command_ = "";
+
+            mode_ = filtered_mode_;
+            filtered_mode_ = NONE;
+
+            continuous_refresh_ = true;
+            current_row_ = -1;
+            filter_ = "";
+        }
+        else if ((int)input == 127 || input == KEY_BACKSPACE)
+        {
+            if (!filter_.empty())
+            {
+                filter_.pop_back();
+            }
+        }
+        else if ((int)input == 10) // enter key
+        {
+            command = filtered_command_;
+            filtered_command_ = "";
+
+            mode_ = filtered_mode_;
+            filtered_mode_ = NONE;
+
+            continuous_refresh_ = true;
+            current_row_ = -1;
+        }
+        else
+        {
+            if (!iscntrl(input))
+            {
+                filter_ = filter_ + std::string(1, input);
+            }
+        }
+        writeInput(filter_);
+    }
+    else if ((int)input == 27 || input == KEY_EXIT) // esc key
+    {
+        filter_ = "";
+        writeInput(filter_);
+    }
+    else if (input == 'n')
     {
         command = "rosnode list";
         continuous_refresh_ = true;
         mode_ = NODE_LIST;
         current_row_ = -1;
+        filter_ = "";
+        writeInput(filter_);
     }
     else if (input == 't')
     {
@@ -157,6 +233,8 @@ void NcursesNode::parseInput(char input, std::string &command)
         continuous_refresh_ = true;
         mode_ = TOPIC_LIST;
         current_row_ = -1;
+        filter_ = "";
+        writeInput(filter_);
     }
     else if (input == 's')
     {
@@ -164,6 +242,8 @@ void NcursesNode::parseInput(char input, std::string &command)
         continuous_refresh_ = true;
         mode_ = SERVICE_LIST;
         current_row_ = -1;
+        filter_ = "";
+        writeInput(filter_);
     }
     else if (input == 'j')
     {
@@ -205,6 +285,16 @@ void NcursesNode::parseInput(char input, std::string &command)
         }
         current_row_ = -1;
         continuous_refresh_ = true;
+
+        filter_ = "";
+        writeInput(filter_);
+    }
+    else if (input == '/') // search mode
+    {
+        filter_ = "";
+        filtered_mode_ = mode_;
+        filtered_command_ = command;
+        mode_ = SEARCH;
     }
 }
 
@@ -214,7 +304,7 @@ void NcursesNode::run()
     while (true)
     {
         char input = getch();
-        if (input == 'q')
+        if (input == 'q' && mode_ != SEARCH)
         {
             break;
         }

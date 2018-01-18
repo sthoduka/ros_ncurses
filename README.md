@@ -19,17 +19,19 @@ Run
 
 Usage
 -----
-    n    runs rosnode list continuously
-    t    runs rostopic list continously
-    s    runs rosservice list continously
-    i    ros<X> info (where X = node, topic or service depending on if you're in rosnode, rostopic or rosservice list mode)
-    j    scroll down, for example to select a certain node, topic or service
-    k    scroll up
-    q    quit
+    n     runs rosnode list continuously
+    t     runs rostopic list continously
+    s     runs rosservice list continously
+    i     ros<X> info (where X = node, topic or service depending on if you're in rosnode, rostopic or rosservice list mode)
+    j     scroll down, for example to select a certain node, topic or service
+    k     scroll up
+    q     quit
+    /     start search
+    Esc   remove search filter
+    Enter persist search filter
 
 Future
 ------
-* search within `rostopic info`, `rosnode info` outputs
 * `rostopic echo`
 * select and run `rosnode info` on nodes listed in rostopic info
 * select and run `rostopic info` on topics listed in rosnode info

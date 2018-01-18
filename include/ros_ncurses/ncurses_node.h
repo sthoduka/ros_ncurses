@@ -2,6 +2,7 @@
 #define NCURSES_NODE_H
 
 #include <string>
+#include <vector>
 #include <memory>
 #include <ncurses.h>
 
@@ -20,9 +21,12 @@ private:
     const static int BUFFER_SIZE = 128;
     char buffer_[BUFFER_SIZE];
 
+    std::vector<std::string> full_output_;
+
     WINDOW * main_window_;
     WINDOW * command_window_;
     WINDOW * status_window_;
+    WINDOW * input_window_;
 
     std::shared_ptr<FILE> command_pipe_;
 
@@ -34,16 +38,22 @@ private:
         SERVICE_LIST,
         NODE_INFO,
         TOPIC_INFO,
-        SERVICE_INFO
+        SERVICE_INFO,
+        SEARCH
     };
 
     Mode mode_;
+
+    std::string filter_;
+    std::string filtered_command_;
+    Mode filtered_mode_;
 
 
     void initNcurses();
 
     void writeCommand(const std::string &command);
     void writeStatus(const std::string &status);
+    void writeInput(const std::string &input);
     void writeOutput();
     void updateOutput();
 
@@ -52,6 +62,7 @@ private:
 
     void highlightNextRow();
     void highlightPreviousRow();
+    void highlightRow(int row);
 
 public:
     NcursesNode();
